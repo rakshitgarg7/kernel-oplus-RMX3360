@@ -441,7 +441,7 @@ static int fw_decompress_xz(struct device *dev, struct fw_priv *fw_priv,
 #endif /* CONFIG_FW_LOADER_COMPRESS */
 
 /* direct firmware loading support */
-static char fw_path_para[256] = "/vendor/firmware";
+static char fw_path_para[256];
 static const char * const fw_path[] = {
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_WIFI_BDF2)
 	"/mnt/vendor/persist/copy",
@@ -449,6 +449,9 @@ static const char * const fw_path[] = {
 	"/odm/etc/wifi",
 #endif /* CONFIG_OPLUS_FEATURE_WIFI_BDF2 */
 	fw_path_para,
+	"/vendor/firmware",
+	"/vendor/firmware_mnt/image",
+	"/firmware/image",
 	"/lib/firmware/updates/" UTS_RELEASE,
 	"/lib/firmware/updates",
 	"/lib/firmware/" UTS_RELEASE,
