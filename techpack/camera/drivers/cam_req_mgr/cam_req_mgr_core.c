@@ -42,10 +42,10 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->last_flush_id = 0;
 	link->initial_sync_req = -1;
 	link->dual_trigger = false;
-	link->trigger_cnt[0][CAM_TRIGGER_POINT_SOF] = 0;
-	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
-	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
-	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
+	link->trigger_cnt[0][0] = 0;
+	link->trigger_cnt[0][1] = 0;
+	link->trigger_cnt[1][0] = 0;
+	link->trigger_cnt[1][1] = 0;
 	link->in_msync_mode = false;
 	link->retry_cnt = 0;
 	link->is_shutdown = false;
@@ -56,7 +56,6 @@ void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 	link->num_sync_links = 0;
 	link->last_sof_trigger_jiffies = 0;
 	link->wq_congestion = false;
-	atomic_set(&link->eof_event_cnt, 0);
 
 	for (pd = 0; pd < CAM_PIPELINE_DELAY_MAX; pd++) {
 		link->req.apply_data[pd].req_id = -1;
@@ -571,13 +570,12 @@ static void __cam_req_mgr_flush_req_slot(
 		}
 	}
 
-	atomic_set(&link->eof_event_cnt, 0);
 	in_q->wr_idx = 0;
 	in_q->rd_idx = 0;
-	link->trigger_cnt[0][CAM_TRIGGER_POINT_SOF] = 0;
-	link->trigger_cnt[0][CAM_TRIGGER_POINT_EOF] = 0;
-	link->trigger_cnt[1][CAM_TRIGGER_POINT_SOF] = 0;
-	link->trigger_cnt[1][CAM_TRIGGER_POINT_EOF] = 0;
+	link->trigger_cnt[0][0] = 0;
+	link->trigger_cnt[0][1] = 0;
+	link->trigger_cnt[1][0] = 0;
+	link->trigger_cnt[1][1] = 0;
 }
 
 /**
@@ -996,6 +994,7 @@ static int __cam_req_mgr_send_req(struct cam_req_mgr_core_link *link,
 			trace_cam_req_mgr_apply_request(link, &apply_req, dev);
 		}
 	}
+
 	if (rc < 0) {
 		CAM_WARN_RATE_LIMIT(CAM_CRM, "APPLY FAILED pd %d req_id %lld",
 			dev->dev_info.p_delay, apply_req.request_id);
@@ -1715,19 +1714,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 	}
 
 	mutex_lock(&session->lock);
-	/*
-	 * During session destroy/unlink the link state is updated and session
-	 * mutex is released when flushing the workq. In case the wq is scheduled
-	 * thereafter this API will then check the updated link state and exit
-	 */
-	spin_lock_bh(&link->link_state_spin_lock);
-	if (link->state == CAM_CRM_LINK_STATE_IDLE) {
-		spin_unlock_bh(&link->link_state_spin_lock);
-		mutex_unlock(&session->lock);
-		return -EPERM;
-	}
-	spin_unlock_bh(&link->link_state_spin_lock);
-
 	in_q = link->req.in_q;
 	/*
 	 * Check if new read index,
@@ -1798,7 +1784,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 					}
 				}
 			}
-
 			/*
 			 * Validate that if the req is ready to apply before
 			 * checking the inject delay.
@@ -1913,7 +1898,6 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 
 		if (link->sync_link_sof_skip)
 			link->sync_link_sof_skip = false;
-
 		/*
 		 * Below two cases can move slot to APPLIED status,
 		 * 1# there is no eof trigger request
@@ -2985,8 +2969,6 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 	struct cam_req_mgr_core_link        *link = NULL;
 	struct cam_req_mgr_req_queue        *in_q = NULL;
 	struct crm_task_payload             *task_data = NULL;
-	int                                  reset_step = 0;
-	int                                  i = 0;
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_CRM, "input args NULL %pK %pK", data, priv);
@@ -3015,22 +2997,6 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 				in_q->last_applied_idx = -1;
 			if (idx == in_q->rd_idx)
 				__cam_req_mgr_dec_idx(&idx, 1, in_q->num_slots);
-
-			reset_step = link->max_delay;
-			for (i = 0; i < link->num_sync_links; i++) {
-				if (link->sync_link[i]) {
-					if ((link->in_msync_mode) &&
-						(link->sync_link[i]->max_delay >
-							reset_step))
-						reset_step =
-						link->sync_link[i]->max_delay;
-				}
-			}
-
-			__cam_req_mgr_dec_idx(
-				&idx, reset_step + 1,
-				in_q->num_slots);
-
 			__cam_req_mgr_reset_req_slot(link, idx);
 		}
 	}
@@ -3058,7 +3024,6 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 			in_q->slot[in_q->rd_idx].status);
 
 	spin_unlock_bh(&link->link_state_spin_lock);
-
 	/*
 	 * Move to next req at SOF only in case
 	 * the rd_idx is updated at EOF.
@@ -3292,10 +3257,6 @@ static int __cam_req_mgr_check_for_dual_trigger(
 		(link->trigger_cnt[0][trigger] - link->trigger_cnt[1][trigger] > 1)) ||
 		(link->trigger_cnt[1][trigger] &&
 		(link->trigger_cnt[1][trigger] - link->trigger_cnt[0][trigger] > 1))) {
-
-		CAM_WARN(CAM_CRM,
-			"One of the devices could not generate trigger");
-
 		link->trigger_cnt[0][trigger] = 0;
 		link->trigger_cnt[1][trigger] = 0;
 		CAM_DBG(CAM_CRM, "Reset the trigger cnt");
@@ -3463,7 +3424,6 @@ static int cam_req_mgr_cb_notify_trigger(
 
 	trigger_id = trigger_data->trigger_id;
 	trigger = trigger_data->trigger;
-
 	/*
 	 * Reduce the workq overhead when there is
 	 * not any eof event found.
@@ -3786,17 +3746,13 @@ end:
 /**
  * __cam_req_mgr_unlink()
  *
- * @brief  : Unlink devices on a link structure from the session
- *           This API is to be invoked with session mutex held
- * @session: session of the link
- * @link   : Pointer to the link structure
+ * @brief : Unlink devices on a link structure from the session
+ * @link  : Pointer to the link structure
  *
  * @return: 0 for success, negative for failure
  *
  */
-static int __cam_req_mgr_unlink(
-	struct cam_req_mgr_core_session *session,
-	struct cam_req_mgr_core_link *link)
+static int __cam_req_mgr_unlink(struct cam_req_mgr_core_link *link)
 {
 	int rc;
 
@@ -3812,16 +3768,14 @@ static int __cam_req_mgr_unlink(
 	}
 
 	mutex_lock(&link->lock);
+
 	spin_lock_bh(&link->link_state_spin_lock);
 	/* Destroy timer of link */
 	crm_timer_exit(&link->watchdog);
 	spin_unlock_bh(&link->link_state_spin_lock);
-	/* Release session mutex for workq processing */
-	mutex_unlock(&session->lock);
 	/* Destroy workq of link */
 	cam_req_mgr_workq_destroy(&link->workq);
-	/* Acquire session mutex after workq flush */
-	mutex_lock(&session->lock);
+
 	/* Cleanup request tables and unlink devices */
 	__cam_req_mgr_destroy_link_info(link);
 	/* Free memory holding data of linked devs */
@@ -3863,7 +3817,6 @@ int cam_req_mgr_destroy_session(
 		goto end;
 
 	}
-
 	mutex_lock(&cam_session->lock);
 	if (cam_session->num_links) {
 		CAM_DBG(CAM_CRM, "destroy session %x num_active_links %d",
@@ -3879,7 +3832,7 @@ int cam_req_mgr_destroy_session(
 				link->link_hdl);
 			/* Ignore return value since session is going away */
 			link->is_shutdown = is_shutdown;
-			__cam_req_mgr_unlink(cam_session, link);
+			__cam_req_mgr_unlink(link);
 			__cam_req_mgr_free_link(link);
 		}
 	}
@@ -4160,9 +4113,8 @@ int cam_req_mgr_unlink(struct cam_req_mgr_unlink_info *unlink_info)
 		rc = -EINVAL;
 		goto done;
 	}
-	mutex_lock(&cam_session->lock);
-	rc = __cam_req_mgr_unlink(cam_session, link);
-	mutex_unlock(&cam_session->lock);
+
+	rc = __cam_req_mgr_unlink(link);
 
 	/* Free curent link and put back into session's free pool of links */
 	__cam_req_mgr_unreserve_link(cam_session, link);
