@@ -1107,7 +1107,7 @@ static struct msm_vidc_common_data lahaina_common_data[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
@@ -1236,7 +1236,7 @@ static struct msm_vidc_common_data yupik_common_data_v0[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
@@ -1371,7 +1371,7 @@ static struct msm_vidc_common_data yupik_common_data_v1[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
@@ -1627,7 +1627,7 @@ static struct msm_vidc_common_data shima_common_data_v0[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
@@ -1744,7 +1744,7 @@ static struct msm_vidc_common_data shima_common_data_v1[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",
@@ -1861,7 +1861,7 @@ static struct msm_vidc_common_data shima_common_data_v2[] = {
 	},
 	{
 		.key = "qcom,decode-batching",
-		.value = 0,
+		.value = 1,
 	},
 	{
 		.key = "qcom,batch-timeout",

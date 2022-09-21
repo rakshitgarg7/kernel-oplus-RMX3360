@@ -581,7 +581,6 @@ source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
-source "drivers/misc/tri_state_key/Kconfig"
 
 #ifdef VENDOR_EDIT
 source "drivers/misc/cs_press/Kconfig"
