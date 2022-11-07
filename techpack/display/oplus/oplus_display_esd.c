@@ -140,20 +140,6 @@ static int oplus_mdss_dsi_samsung_amb655x_dsc_panel_check_esd_status(struct dsi_
 		DSI_ERR("black_count=%d, greenish_count=%d, total=%d\n",
 			  esd_black_count, esd_greenish_count, esd_black_count + esd_greenish_count);
 		rc = -1;
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-		if (rc <= 0) {
-			char payload[200] = "";
-			int cnt = 0;
-
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt,
-					"0x0A = %02x, 0xB6 = %02x, 0xA2 = %02x, %02x, %02x, %02x, %02x",
-					register1[0], register2[0], register3[0], register3[1],
-					register3[2], register3[3], register3[4]);
-			DSI_MM_ERR("ESD check failed: %s\n", payload);
-			mm_fb_display_kevent(payload, MM_FB_KEY_RATELIMIT_1H, "ESD check failed");
-		}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	} else {
 		rc = 1;
 	}
@@ -189,17 +175,6 @@ static int oplus_mdss_dsi_samsung_amb670yf01_dsc_panel_check_esd_status(struct d
 			esd_black_count++;
 			DSI_ERR("black_count=%d\n", esd_black_count);
 			rc = -1;
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-			if (rc <= 0) {
-				char payload[50] = "";
-				int cnt = 0;
-
-				cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
-				cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "0x0A = %02x", register1[0]);
-				DSI_MM_ERR("ESD check failed: %s\n", payload);
-				mm_fb_display_kevent(payload, MM_FB_KEY_RATELIMIT_1H, "ESD check failed");
-			}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		} else {
 			rc = 1;
 		}
@@ -217,17 +192,6 @@ static int oplus_mdss_dsi_samsung_amb670yf01_dsc_panel_check_esd_status(struct d
 		DSI_ERR("0x0A = %02x\n", register1[0]);
 		DSI_ERR("black_count=%d\n", esd_black_count);
 		rc = -1;
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-		if (rc <= 0) {
-			char payload[50] = "";
-			int cnt = 0;
-
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "0x0A = %02x", register1[0]);
-			DSI_MM_ERR("ESD check failed: %s\n", payload);
-			mm_fb_display_kevent(payload, MM_FB_KEY_RATELIMIT_1H, "ESD check failed");
-		}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	} else {
 		rc = 1;
 	}
@@ -248,18 +212,6 @@ static int oplus_mdss_dsi_ili7807s_dsc_panel_check_esd_status(struct dsi_display
 		DSI_ERR("0x09 = %02x %02x %02x\n", register1[0], register1[1], register1[2]);
 		DSI_ERR("black_count=%d\n", esd_black_count);
 		rc = -1;
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-		if (rc <= 0) {
-			char payload[50] = "";
-			int cnt = 0;
-
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "0x09 = %02x %02x %02x\n",
-					register1[0], register1[1], register1[2]);
-			DSI_MM_ERR("ESD check failed: %s\n", payload);
-			mm_fb_display_kevent(payload, MM_FB_KEY_RATELIMIT_1H, "ESD check failed");
-		}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 	} else {
 		rc = 1;
 	}

@@ -1154,12 +1154,7 @@ static void sde_kms_prepare_commit(struct msm_kms *kms,
 	SDE_ATRACE_BEGIN("prepare_commit");
 	rc = pm_runtime_get_sync(sde_kms->dev->dev);
 	if (rc < 0) {
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-		SDE_MM_ERROR("failed to enable power resources %d\n", rc);
-
-#else
 		SDE_ERROR("failed to enable power resources %d\n", rc);
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		SDE_EVT32(rc, SDE_EVTLOG_ERROR);
 		goto end;
 	}

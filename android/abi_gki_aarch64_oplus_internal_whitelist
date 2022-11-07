@@ -116,10 +116,6 @@
   oplus_show_utc_time
 #endif
 
-#ifdef OPLUS_FEATURE_APP_MONITOR
-  statistics_monitor_apps_rtt_via_uid
-  apps_monitor_netlink_send_to_user
-#endif
 
 #ifdef OPLUS_FEATURE_NFC_GKI
   prj_name

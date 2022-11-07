@@ -112,11 +112,6 @@ static int tfa98xx_dsp_cmd = 0;
 static int tfa98xx_send_volume(uint8_t channel, uint8_t volume);
 #endif /* OPLUS_FEATURE_FADE_IN */
 
-#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-static int speaker_mute_control = 0;
-static int tfa_state_mark = 0;
-static int selector_for_speaker_mute = 0;
-#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 static char *fw_name = "tfa98xx.cnt";
 module_param(fw_name, charp, S_IRUGO | S_IWUSR);
@@ -230,48 +225,6 @@ static const struct snd_kcontrol_new ftm_spk_rev_controls[] = {
 #endif /* OPLUS_ARCH_EXTENDS */
 
 
-#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-static char const *spk_mute_ctrl_text[] = {"Off", "On"};
-static const struct soc_enum spk_mute_ctrl_enum =
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_mute_ctrl_text), spk_mute_ctrl_text);
-
-static int tfa98xx_spk_mute_ctrl_get(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = speaker_mute_control;
-	return 0;
-}
-
-static int tfa98xx_spk_mute_ctrl_put(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
-	struct tfa98xx *tfa98xx = snd_soc_component_get_drvdata(component);
-
-	int val = ucontrol->value.integer.value[0];
-
-	if (val == speaker_mute_control) {
-		pr_err("Speaker mute is already %s\n", val == 1 ? "on" : "off");
-		return 1;
-	} else {
-		pr_warn("Speaker mute set to %s\n", val == 1 ? "on" : "off");
-		speaker_mute_control = val;
-	}
-	if (TFA_STATE_OPERATING == tfa_dev_get_state(tfa98xx->tfa)) {
-		pr_warn("TFA operating, setting state\n");
-		mutex_lock(&tfa98xx->dsp_lock);
-		tfa_dev_set_state(tfa98xx->tfa,
-			val == 1 ? TFA_STATE_MUTE : TFA_STATE_UNMUTE);
-		mutex_unlock(&tfa98xx->dsp_lock);
-	}
-	return 0;
-}
-
-static const struct snd_kcontrol_new tfa98xx_snd_control_spk_mute[] = {
-	SOC_ENUM_EXT("Speaker_Mute_Switch", spk_mute_ctrl_enum,
-					tfa98xx_spk_mute_ctrl_get, tfa98xx_spk_mute_ctrl_put),
-};
-#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 struct tfa98xx_rate {
 	unsigned int rate;
@@ -1570,94 +1523,6 @@ static ssize_t tfa98xx_dbgfs_fw_state_get(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, str, strlen(str));
 }
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-#define I2SCLK_ERROR 0x1
-#define REGMAP_ERROR (0x1 << 1)
-#define OTP_ERROR (0x1 << 2)
-#define UVP_ERROR (0x1 << 3)
-#define OVP_ERROR (0x1 << 4)
-#define OCP_ERROR (0x1 << 5)
-#define CNT_NO_REGISTER (0x1 << 7)
-
-//Provide nodes for AT audio self-test
-static ssize_t tfa98xx_selfcheck_read(struct file *file,
-                     char __user *user_buf, size_t count,
-                     loff_t *ppos)
-{
-	int ret, ready = 0;
-	unsigned int state[2] = {0}; // state[0]: top pa, state[1]: bottom pa
-	unsigned int *state_temp = NULL;
-	unsigned int reg10h, reg13h;
-
-	struct tfa98xx *tfa98xx ;
-
-	pr_err("%s enter\n", __func__);
-
-	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
-		if (tfa98xx == NULL)
-			return -EINVAL;
-
-		if (tfa98xx->tfa->channel == 0)
-			state_temp = &state[0];
-		else
-			state_temp = &state[1];
-
-		if (tfa98xx->dsp_fw_state != TFA98XX_DSP_FW_OK) {
-			*state_temp |= CNT_NO_REGISTER;
-			return -EINVAL;
-		}
-
-		/*step 1, check i2s clock, if not stable, we stop and return fail*/
-		tfa98xx_dsp_system_stable_v6(tfa98xx->tfa, &ready);
-		if (!ready) {
-			dev_err(&tfa98xx->i2c->dev,
-					"Device 0x%x  I2S clock not stable, please check!\n", tfa98xx->i2c->addr);
-			*state_temp |= I2SCLK_ERROR;
-		}
-
-		/*step 2, check alarm for OTP/UVP/OVP/OCP */
-		ret = regmap_read(tfa98xx->regmap, 0x10, &reg10h);
-		if (ret < 0) {
-			dev_err(&tfa98xx->i2c->dev, "Failed to read 0x%x 10h-STATUS_FLAGS0\n", tfa98xx->i2c->addr);
-			*state_temp |= REGMAP_ERROR;
-			return -EIO;
-		}
-		/*bit 5 is MANALARM*/
-		if(reg10h & 0x20){
-			dev_info(&tfa98xx->i2c->dev, "Device 0x%x is in alarm state\n", tfa98xx->i2c->addr);
-			/*bit3 == 1 is OCP*/
-			if(reg10h & 0x8){
-				dev_err(&tfa98xx->i2c->dev, "Device 0x%x is OCP!\n", tfa98xx->i2c->addr);
-				*state_temp |= OCP_ERROR;
-			}
-			/*bit2 == 0 is OTP*/
-			if(!(reg10h & 0x4)){
-				dev_err(&tfa98xx->i2c->dev, "Device 0x%x is OTP!\n", tfa98xx->i2c->addr);
-				*state_temp |= OTP_ERROR;
-			}
-			/*bit4 == 0 is UVP*/
-			if(!(reg10h & 0x10)){
-				dev_err(&tfa98xx->i2c->dev, "Device 0x%x is UVP!\n", tfa98xx->i2c->addr);
-				*state_temp |= UVP_ERROR;
-			}
-			/*(13Hbit8 == 0) is OVP*/
-			ret = regmap_read(tfa98xx->regmap, 0x13, &reg13h);
-			if (ret < 0) {
-				dev_err(&tfa98xx->i2c->dev, "Failed to read 0x%x 13h-STATUS_FLAGS3\n", tfa98xx->i2c->addr);
-				*state_temp |= REGMAP_ERROR;
-			}
-			if(!(reg13h & 0x100)){
-				dev_err(&tfa98xx->i2c->dev, "Device 0x%x is OVP!\n", tfa98xx->i2c->addr);
-				*state_temp |= OVP_ERROR;
-			}
-		}
-	}
-
-	ret = simple_read_from_buffer(user_buf, count, ppos, state, sizeof(state));
-
-	return ret;
-}
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 static ssize_t tfa98xx_dbgfs_rpc_read(struct file *file,
 				     char __user *user_buf, size_t count,
@@ -1957,13 +1822,6 @@ static const struct file_operations tfa98xx_dbgfs_rpc_fops = {
 	.llseek = default_llseek,
 };
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-static const struct file_operations tfa98xx_selfcheck_fops = {
-	.open = simple_open,
-	.read = tfa98xx_selfcheck_read,
-	.llseek = default_llseek,
-};
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 static void tfa98xx_debug_init(struct tfa98xx *tfa98xx, struct i2c_client *i2c)
 {
@@ -2034,10 +1892,6 @@ static void tfa98xx_debug_init(struct tfa98xx *tfa98xx, struct i2c_client *i2c)
 	proc_create_data("rpc", S_IRUGO|S_IWUGO, tfa98xx->dbg_dir,
 					&tfa98xx_dbgfs_rpc_fops, i2c);
 
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	proc_create_data("selfcheck", S_IRUGO|S_IWUGO, tfa98xx->dbg_dir,
-					&tfa98xx_selfcheck_fops, i2c);
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 	if (tfa98xx->flags & TFA98XX_FLAG_SAAM_AVAILABLE) {
 		dev_dbg(tfa98xx->dev, "Adding pga_gain debug interface\n");
@@ -2560,9 +2414,6 @@ static int tfa98xx_set_stereo_ctl(struct snd_kcontrol *kcontrol,
 
 	selector = ucontrol->value.integer.value[0];
 	tfa98xx_selector = selector;
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	selector_for_speaker_mute = ucontrol->value.integer.value[0];
-	#endif/*OPLUS_FEATURE_SPEAKER_MUTE*/
 	pr_info("%s: selector = %d\n", __func__, selector);
 
 	mutex_lock(&tfa98xx_mutex);
@@ -3656,12 +3507,6 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 				}
 				#endif /* OPLUS_ARCH_EXTENDS */
 
-				#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-				if (speaker_mute_control == 1) {
-					pr_info("Speaker mute control on, muting...\n");
-					tfa_dev_set_state(tfa98xx->tfa, TFA_STATE_MUTE);
-				}
-				#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 				/*
 				 * start monitor thread to check IC status bit
@@ -4105,9 +3950,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 			tfa98xx->cstream = 0;
 		if (tfa98xx->pstream != 0 || tfa98xx->cstream != 0)
 			return 0;
-		#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-		tfa_state_mark = 1;
-		#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 		mutex_lock(&tfa98xx_mutex);
 		tfa98xx_sync_count = 0;
 		mutex_unlock(&tfa98xx_mutex);
@@ -4141,9 +3983,6 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
         if(tfa98xx->flags & TFA98XX_FLAG_ADAPT_NOISE_MODE)
 			cancel_delayed_work_sync(&tfa98xx->nmodeupdate_work);
 	} else {
-		#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-		tfa_state_mark = 0;
-		#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tfa98xx->pstream = 1;
 			if (tfa98xx->tfa->is_probus_device) {
@@ -4266,10 +4105,6 @@ static int tfa98xx_probe(struct snd_soc_component *component)
 			ftm_spk_rev_controls, ARRAY_SIZE(ftm_spk_rev_controls));
 	#endif /* OPLUS_ARCH_EXTENDS */
 
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	snd_soc_add_component_controls(tfa98xx->component,
-		tfa98xx_snd_control_spk_mute, ARRAY_SIZE(tfa98xx_snd_control_spk_mute));
-	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 	#ifdef OPLUS_FEATURE_FADE_IN
 	snd_soc_add_component_controls(tfa98xx->component,

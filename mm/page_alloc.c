@@ -77,11 +77,6 @@
 #include "internal.h"
 #include "shuffle.h"
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#if (defined CONFIG_OPLUS_MEM_MONITOR) && (defined CONFIG_OPLUS_HEALTHINFO)
-#include <linux/healthinfo/memory_monitor.h>
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 #if defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
 #include "multi_freearea.h"
 #endif
@@ -4745,11 +4740,6 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	int no_progress_loops;
 	unsigned int cpuset_mems_cookie;
 	int reserve_flags;
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#if (defined CONFIG_OPLUS_MEM_MONITOR) && (defined CONFIG_OPLUS_HEALTHINFO)
-	unsigned long alloc_start = jiffies;
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 	/*
 	 * We also sanity check to catch abuse of atomic reserves being used by
 	 * callers that are not in atomic context.
@@ -5009,11 +4999,6 @@ fail:
 	warn_alloc(gfp_mask, ac->nodemask,
 			"page allocation failure: order:%u", order);
 got_pg:
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#if (defined CONFIG_OPLUS_MEM_MONITOR) && (defined CONFIG_OPLUS_HEALTHINFO)
-	memory_alloc_monitor(gfp_mask, order, jiffies_to_msecs(jiffies - alloc_start));
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 	return page;
 }
 

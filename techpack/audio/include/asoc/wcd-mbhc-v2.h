@@ -648,9 +648,6 @@ struct wcd_mbhc {
 	bool headset_micbias_alwayon;
 	#endif /* OPLUS_ARCH_EXTENDS */
 
-	#ifdef OPLUS_FEATURE_IMPEDANCE_MATCH
-	bool enable_hp_impedance_detect;
-	#endif /* OPLUS_FEATURE_IMPEDANCE_MATCH */
 };
 
 void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,

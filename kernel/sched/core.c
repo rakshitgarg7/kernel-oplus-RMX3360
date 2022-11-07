@@ -31,14 +31,7 @@
 
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/sched.h>
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-#include <linux/sched_assist/sched_assist_common.h>
-#include <../special_opt/special_opt.h>
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-#include <linux/sched_assist/sched_assist_slide.h>
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -1563,16 +1556,6 @@ void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 {
 	const struct sched_class *class;
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-//#ifdef CONFIG_UXCHAIN_V2
-	u64 wallclock = sched_clock();
-
-	if (sysctl_uxchain_v2 &&
-		wallclock - rq->curr->get_mmlock_ts < PREEMPT_DISABLE_RWSEM &&
-		rq->curr->get_mmlock &&
-		!(p->flags & PF_WQ_WORKER) && !task_has_rt_policy(p))
-		return;
-#endif
 
 	if (p->sched_class == rq->curr->sched_class) {
 		rq->curr->sched_class->check_preempt_curr(rq, p, flags);
@@ -1757,11 +1740,6 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 #if defined(CONFIG_KSWAPD_UNBIND_MAX_CPU)
 	if ((kswapd_unbind_cpu != -1) && (p->flags & PF_KSWAPD) &&
 			cpumask_test_cpu(kswapd_unbind_cpu, new_mask))
-		return;
-#endif
-#ifdef OPLUS_FEATURE_PERFORMANCE
-	if ((p->flags & PF_KSWAPD) &&
-	     (cpumask_test_cpu(6, new_mask) || cpumask_test_cpu(7, new_mask) || cpumask_test_cpu(4, new_mask) || cpumask_test_cpu(5, new_mask)))
 		return;
 #endif
 	queued = task_on_rq_queued(p);
@@ -3894,9 +3872,6 @@ void scheduler_tick(void)
 	if (early_notif)
 		flag = SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_EARLY_DET;
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	slide_calc_boost_load(rq, &flag, cpu);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	cpufreq_update_util(rq, flag);
 	rq_unlock(rq, &rf);
 
@@ -3904,13 +3879,7 @@ void scheduler_tick(void)
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-    if(!specopt_skip_balance()) {
-	    trigger_load_balance(rq);
-    }
-#else
 	trigger_load_balance(rq);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 #endif
 
 	rcu_read_lock();
@@ -4374,9 +4343,6 @@ static void __sched notrace __schedule(bool preempt)
 		switch_count = &prev->nvcsw;
 	}
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	prev->enqueue_time = rq->clock;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 	next = pick_next_task(rq, prev, &rf);
 	clear_tsk_need_resched(prev);
@@ -6982,9 +6948,6 @@ void __init sched_init_smp(void)
 #endif
 	sched_init_granularity();
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	ux_init_cpu_data();
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	init_sched_rt_class();
 	init_sched_dl_class();
 
@@ -7103,9 +7066,6 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		ux_init_rq_data(rq);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);

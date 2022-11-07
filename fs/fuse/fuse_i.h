@@ -416,10 +416,6 @@ struct fuse_iqueue_ops {
 	/**
 	 * Signal that a sync request has been queued
 	 */
-#ifdef OPLUS_FEATURE_PERFORMANCE
-	void (*wake_sync_and_unlock)(struct fuse_iqueue *fiq, struct fuse_req *req)
-		__releases(fiq->lock);
-#endif
 };
 
 /** /dev/fuse input queue operations */

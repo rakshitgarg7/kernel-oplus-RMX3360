@@ -44,9 +44,6 @@
 static uint disable_restart_work;
 module_param(disable_restart_work, uint, 0644);
 
-#if defined(OPLUS_FEATURE_MODEM_MINIDUMP) && defined(CONFIG_OPLUS_FEATURE_MODEM_MINIDUMP)
-static struct workqueue_struct *crash_report_workqueue = NULL;
-#endif
 
 /* The maximum shutdown timeout is the product of MAX_LOOPS and DELAY_MS. */
 #define SHUTDOWN_ACK_MAX_LOOPS	100
@@ -1097,137 +1094,6 @@ static void device_restart_work_hdlr(struct work_struct *work)
 							dev->desc->name);
 }
 
-#if defined(OPLUS_FEATURE_MODEM_MINIDUMP) && defined(CONFIG_OPLUS_FEATURE_MODEM_MINIDUMP)
-unsigned int getBKDRHash(char *str, unsigned int len)
-{
-	unsigned int seed = 131; /* 31 131 1313 13131 131313 etc.. */
-	unsigned int hash = 0;
-	unsigned int i    = 0;
-	if (str == NULL) {
-		return 0;
-	}
-	for(i = 0; i < len; str++, i++) {
-		hash = (hash * seed) + (*str);
-	}
-	return hash;
-}
-EXPORT_SYMBOL(getBKDRHash);
-
-static void __modem_send_uevent(struct device *dev, char *reason)
-{
-	int ret_val;
-	char modem_event[] = "MODEM_EVENT=modem_failure";
-	char modem_reason[MAX_REASON_LEN] = {0};
-	char modem_hashreason[MAX_REASON_LEN] = {0};
-	char *envp[4];
-	unsigned int hashid = 0;
-
-	envp[0] = (char *)&modem_event;
-	if (reason && reason[0]) {
-		snprintf(modem_reason, sizeof(modem_reason), "MODEM_REASON=%s", reason);
-	} else {
-	    snprintf(modem_reason, sizeof(modem_reason), "MODEM_REASON=unkown");
-	}
-	modem_reason[MAX_REASON_LEN - 1] = 0;
-	envp[1] = (char *)&modem_reason;
-
-	hashid = getBKDRHash(reason, strlen(reason));
-	snprintf(modem_hashreason, sizeof(modem_hashreason), "MODEM_HASH_REASON=fid:%u;cause:%s", hashid, reason);
-	modem_hashreason[MAX_REASON_LEN - 1] = 0;
-	pr_info("__subsystem_send_uevent: modem_hashreason: %s\n", modem_hashreason);
-	envp[2] = (char *)&modem_hashreason;
-
-	envp[3] = 0;
-
-	if (dev) {
-		ret_val = kobject_uevent_env(&(dev->kobj), KOBJ_CHANGE, envp);
-		if (!ret_val) {
-			pr_info("modem crash:kobject_uevent_env success!\n");
-		} else {
-			pr_info("modem crash:kobject_uevent_env fail,error=%d!\n", ret_val);
-		}
-	}
-
-	return;
-}
-
-void __adsp_send_uevent(struct device *dev, char *reason)
-{
-	int ret_val;
-	char adsp_event[] = "ADSP_EVENT=adsp_crash";
-	char adsp_reason[MAX_REASON_LEN] = {0};
-	char *envp[3];
-
-	envp[0] = (char *)&adsp_event;
-	if (reason && reason[0]) {
-		snprintf(adsp_reason, sizeof(adsp_reason), "ADSP_REASON=%s", reason);
-	} else {
-	    snprintf(adsp_reason, sizeof(adsp_reason), "ADSP_REASON=unkown");
-	}
-	adsp_reason[MAX_REASON_LEN - 1] = 0;
-	envp[1] = (char *)&adsp_reason;
-	envp[2] = 0;
-
-	if (dev) {
-		ret_val = kobject_uevent_env(&(dev->kobj), KOBJ_CHANGE, envp);
-		if (!ret_val) {
-			pr_info("adsp_crash:kobject_uevent_env success!\n");
-		} else {
-			pr_info("adsp_crash:kobject_uevent_env fail,error=%d!\n", ret_val);
-		}
-	}
-}
-
-static void subsystem_send_uevent(struct work_struct *wk)
-{
-	struct dev_crash_report_work  *crash_report_wk = container_of(wk, struct dev_crash_report_work, work);
-	char *device_name = crash_report_wk->device_name;
-
-	pr_info("[crash_log]: %s to send crash_uevnet\n", device_name);
-	if (crash_report_wk && crash_report_wk->crash_dev) {
-		if (!strncmp(device_name, "modem", 5)) {
-			__modem_send_uevent(crash_report_wk->crash_dev, (char*)&crash_report_wk->crash_reason);
-		}
-		else if (!strncmp(device_name, "adsp", 4)) {
-			__adsp_send_uevent(crash_report_wk->crash_dev, (char*)&crash_report_wk->crash_reason);
-		}
-	}
-
-	kfree(crash_report_wk);
-
-	return;
-}
-
-void subsystem_schedule_crash_uevent_work(struct device *dev, const char *device_name, char *reason)
-{
-	struct dev_crash_report_work *crash_report_wk;
-
-	if (!device_name) {
-		return;
-	}
-
-	crash_report_wk = (struct dev_crash_report_work*)kzalloc(sizeof(struct dev_crash_report_work), GFP_ATOMIC);
-	if (crash_report_wk == NULL) {
-		printk("alloc dev_crash_report_work fail\n");
-		return;
-	}
-	INIT_WORK(&(crash_report_wk->work), subsystem_send_uevent);
-	crash_report_wk->crash_dev = dev;
-	strlcpy((char*)&crash_report_wk->device_name, device_name, sizeof(crash_report_wk->device_name));
-	if (reason) {
-		strlcpy((char*)&crash_report_wk->crash_reason, reason, sizeof(crash_report_wk->crash_reason));
-	}
-
-	if (crash_report_workqueue) {
-		queue_work(crash_report_workqueue, &(crash_report_wk->work));
-	} else {
-		kfree(crash_report_wk);
-	}
-
-	return;
-}
-EXPORT_SYMBOL(subsystem_schedule_crash_uevent_work);
-#endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
 
 int subsystem_restart_dev(struct subsys_device *dev)
 {
@@ -1790,12 +1656,6 @@ static int __init subsys_restart_init(void)
 {
 	int ret;
 
-	#if defined(OPLUS_FEATURE_MODEM_MINIDUMP) && defined(CONFIG_OPLUS_FEATURE_MODEM_MINIDUMP)
-	crash_report_workqueue = create_singlethread_workqueue("crash_report_workqueue");
-	if (crash_report_workqueue == NULL) {
-		pr_err("crash_report_workqueue alloc fail\n");
-	}
-	#endif
 
 	ssr_wq = alloc_workqueue("ssr_wq",
 		WQ_UNBOUND | WQ_HIGHPRI | WQ_CPU_INTENSIVE, 0);
@@ -1834,9 +1694,6 @@ static void __exit subsys_restart_exit(void)
 	class_destroy(char_class);
 	bus_unregister(&subsys_bus_type);
 	destroy_workqueue(ssr_wq);
-	#if defined(OPLUS_FEATURE_MODEM_MINIDUMP) && defined(CONFIG_OPLUS_FEATURE_MODEM_MINIDUMP)
-	destroy_workqueue(crash_report_workqueue);
-	#endif
 }
 module_exit(subsys_restart_exit);
 

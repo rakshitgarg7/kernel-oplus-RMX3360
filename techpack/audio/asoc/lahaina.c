@@ -41,9 +41,6 @@
 #include "lahaina-port-config.h"
 #include "msm_dailink.h"
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-#include "dailink_extends.h"
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 #ifdef OPLUS_ARCH_EXTENDS
 #include "codecs/sia81xx/sia81xx_aux_dev_if.h"
@@ -6239,9 +6236,6 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 		.name = "TX3_CDC_DMA Hostless",
 		.stream_name = "TX3_CDC_DMA Hostless",
 		.dynamic = 1,
-		#ifdef OPLUS_FEATURE_AUDIO_FTM
-		.dpcm_playback = 1,
-		#endif /* OPLUS_FEATURE_AUDIO_FTM */
 		.dpcm_capture = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			    SND_SOC_DPCM_TRIGGER_POST},
@@ -6417,9 +6411,6 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.id = MSM_FRONTEND_DAI_MULTIMEDIA10,
 		SND_SOC_DAILINK_REG(multimedia10),
 	},
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	TX_CDC_DMA_HOSTLESS_DAILINK("TX4_CDC_DMA Hostless", "TX4_CDC_DMA Hostless", tx4_cdcdma_hostless),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	{/* hw:x,44 */
 		.name = "Secondary MI2S_TX Hostless",
 		.stream_name = "Secondary MI2S_TX Hostless Capture",
@@ -8531,9 +8522,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	/* Add QoS request for audio tasks */
 	msm_audio_add_qos_request();
 
-	#ifdef OPLUS_BUG_DEBUG
-	pr_warning("%s, %d, Successfully!\n", __func__, __LINE__);
-	#endif /* OPLUS_BUG_DEBUG */
 
 	return 0;
 err:

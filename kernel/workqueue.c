@@ -90,12 +90,7 @@ enum {
 
 	WORKER_NOT_RUNNING	= WORKER_PREP | WORKER_CPU_INTENSIVE |
 				  WORKER_UNBOUND | WORKER_REBOUND,
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	NR_STD_WORKER_POOLS	= 3,		/* # standard pools per cpu */
-	UX_WORKER_POOL_INDEX	= 2,		/* last index of pools is ux type */
-#else
 	NR_STD_WORKER_POOLS	= 2,		/* # standard pools per cpu */
-#endif
 
 	UNBOUND_POOL_HASH_ORDER	= 6,		/* hashed by pool->attrs */
 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
@@ -363,10 +358,6 @@ struct workqueue_struct *system_power_efficient_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_power_efficient_wq);
 struct workqueue_struct *system_freezable_power_efficient_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_freezable_power_efficient_wq);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-struct workqueue_struct *system_ux_wq __read_mostly;
-EXPORT_SYMBOL_GPL(system_ux_wq);
-#endif
 
 static int worker_thread(void *__worker);
 static void workqueue_sysfs_unregister(struct workqueue_struct *wq);
@@ -1947,26 +1938,15 @@ static struct worker *create_worker(struct worker_pool *pool)
 
 	worker->id = id;
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (pool->cpu >= 0)
-		snprintf(id_buf, sizeof(id_buf), "%d:%d%s", pool->cpu, id,
-			pool->attrs->ux_state > 0 ? "X" : pool->attrs->nice < 0  ? "H" : "");
-	else
-		snprintf(id_buf, sizeof(id_buf), "%s%d:%d", pool->attrs->ux_state > 0 ? "X" : "u", pool->id, id);
-#else
 	if (pool->cpu >= 0)
 		snprintf(id_buf, sizeof(id_buf), "%d:%d%s", pool->cpu, id,
 			 pool->attrs->nice < 0  ? "H" : "");
 	else
 		snprintf(id_buf, sizeof(id_buf), "u%d:%d", pool->id, id);
-#endif
 	worker->task = kthread_create_on_node(worker_thread, worker, pool->node,
 					      "kworker/%s", id_buf);
 	if (IS_ERR(worker->task))
 		goto fail;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	worker->task->ux_state = pool->attrs->ux_state;
-#endif
 
 	set_user_nice(worker->task, pool->attrs->nice);
 	kthread_bind_mask(worker->task, pool->attrs->cpumask);
@@ -3412,9 +3392,6 @@ static void copy_workqueue_attrs(struct workqueue_attrs *to,
 				 const struct workqueue_attrs *from)
 {
 	to->nice = from->nice;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	to->ux_state = from->ux_state;
-#endif
 	cpumask_copy(to->cpumask, from->cpumask);
 	/*
 	 * Unlike hash and equality test, this function doesn't ignore
@@ -3430,9 +3407,6 @@ static u32 wqattrs_hash(const struct workqueue_attrs *attrs)
 	u32 hash = 0;
 
 	hash = jhash_1word(attrs->nice, hash);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	hash = jhash_1word(attrs->ux_state, hash);
-#endif
 	hash = jhash(cpumask_bits(attrs->cpumask),
 		     BITS_TO_LONGS(nr_cpumask_bits) * sizeof(long), hash);
 	return hash;
@@ -3444,10 +3418,6 @@ static bool wqattrs_equal(const struct workqueue_attrs *a,
 {
 	if (a->nice != b->nice)
 		return false;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (a->ux_state != b->ux_state)
-		return false;
-#endif
 	if (!cpumask_equal(a->cpumask, b->cpumask))
 		return false;
 	return true;
@@ -4204,11 +4174,7 @@ out_unlock:
 
 static int alloc_and_link_pwqs(struct workqueue_struct *wq)
 {
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	int highpri = (wq->flags & WQ_UX) ? UX_WORKER_POOL_INDEX : (wq->flags & WQ_HIGHPRI) ? 1 : 0;
-#else
 	bool highpri = wq->flags & WQ_HIGHPRI;
-#endif
 	int cpu, ret;
 
 	if (!(wq->flags & WQ_UNBOUND)) {
@@ -4281,11 +4247,6 @@ static int init_rescuer(struct workqueue_struct *wq)
 		kfree(rescuer);
 		return ret;
 	}
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (wq->flags & WQ_UX) {
-		rescuer->task->ux_state = SA_TYPE_LIGHT;
-	}
-#endif
 	wq->rescuer = rescuer;
 	kthread_bind_mask(rescuer->task, cpu_possible_mask);
 	wake_up_process(rescuer->task);
@@ -4329,11 +4290,6 @@ struct workqueue_struct *alloc_workqueue(const char *fmt,
 		wq->unbound_attrs = alloc_workqueue_attrs();
 		if (!wq->unbound_attrs)
 			goto err_free_wq;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		if (flags & WQ_UX) {
-			wq->unbound_attrs->ux_state = SA_TYPE_LIGHT;
-		}
-#endif
 	}
 
 	va_start(args, max_active);
@@ -4747,11 +4703,7 @@ static void pr_cont_pool_info(struct worker_pool *pool)
 	pr_cont(" cpus=%*pbl", nr_cpumask_bits, pool->attrs->cpumask);
 	if (pool->node != NUMA_NO_NODE)
 		pr_cont(" node=%d", pool->node);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	pr_cont(" flags=0x%x nice=%d ux=%d", pool->flags, pool->attrs->nice, pool->attrs->ux_state);
-#else
 	pr_cont(" flags=0x%x nice=%d", pool->flags, pool->attrs->nice);
-#endif
 }
 
 static void pr_cont_work(bool comma, struct work_struct *work)
@@ -6015,11 +5967,7 @@ static void __init wq_numa_init(void)
  */
 int __init workqueue_init_early(void)
 {
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	int std_nice[NR_STD_WORKER_POOLS] = { 0, HIGHPRI_NICE_LEVEL, HIGHPRI_NICE_LEVEL };
-#else
 	int std_nice[NR_STD_WORKER_POOLS] = { 0, HIGHPRI_NICE_LEVEL };
-#endif
 	int hk_flags = HK_FLAG_DOMAIN | HK_FLAG_WQ;
 	int i, cpu;
 
@@ -6039,11 +5987,6 @@ int __init workqueue_init_early(void)
 			BUG_ON(init_worker_pool(pool));
 			pool->cpu = cpu;
 			cpumask_copy(pool->attrs->cpumask, cpumask_of(cpu));
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-			if (UX_WORKER_POOL_INDEX == i) {
-				pool->attrs->ux_state = SA_TYPE_LIGHT;
-			}
-#endif
 			pool->attrs->nice = std_nice[i++];
 			pool->node = cpu_to_node(cpu);
 
@@ -6059,11 +6002,6 @@ int __init workqueue_init_early(void)
 		struct workqueue_attrs *attrs;
 
 		BUG_ON(!(attrs = alloc_workqueue_attrs()));
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		if (UX_WORKER_POOL_INDEX == i) {
-			attrs->ux_state = SA_TYPE_LIGHT;
-		}
-#endif
 		attrs->nice = std_nice[i];
 		unbound_std_wq_attrs[i] = attrs;
 
@@ -6073,11 +6011,6 @@ int __init workqueue_init_early(void)
 		 * Turn off NUMA so that dfl_pwq is used for all nodes.
 		 */
 		BUG_ON(!(attrs = alloc_workqueue_attrs()));
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		if (UX_WORKER_POOL_INDEX == i) {
-			attrs->ux_state = SA_TYPE_LIGHT;
-		}
-#endif
 		attrs->nice = std_nice[i];
 		attrs->no_numa = true;
 		ordered_wq_attrs[i] = attrs;
@@ -6085,9 +6018,6 @@ int __init workqueue_init_early(void)
 
 	system_wq = alloc_workqueue("events", 0, 0);
 	system_highpri_wq = alloc_workqueue("events_highpri", WQ_HIGHPRI, 0);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	system_ux_wq = alloc_workqueue("events_ux", WQ_UX, 0);
-#endif
 	system_long_wq = alloc_workqueue("events_long", 0, 0);
 	system_unbound_wq = alloc_workqueue("events_unbound", WQ_UNBOUND,
 					    WQ_UNBOUND_MAX_ACTIVE);
@@ -6098,9 +6028,6 @@ int __init workqueue_init_early(void)
 	system_freezable_power_efficient_wq = alloc_workqueue("events_freezable_power_efficient",
 					      WQ_FREEZABLE | WQ_POWER_EFFICIENT,
 					      0);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	BUG_ON(!system_ux_wq);
-#endif
 	BUG_ON(!system_wq || !system_highpri_wq || !system_long_wq ||
 	       !system_unbound_wq || !system_freezable_wq ||
 	       !system_power_efficient_wq ||

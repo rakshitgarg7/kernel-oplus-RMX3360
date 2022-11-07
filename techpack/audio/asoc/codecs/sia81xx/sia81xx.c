@@ -122,14 +122,6 @@
 #define EPTOUT	(100) /* pulse width time out */
 #define EPOLAR	(101) /* pulse electrical level opposite with the polarity */
 
-#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-static int speaker_mute_control = 0;
-enum {
-	PA_PLAY_STATE,
-	PA_MUTE_STATE,
-};
-static int pa_state_mark = PA_PLAY_STATE;
-#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 struct sia81xx_err {
 	unsigned long owi_set_mode_cnt;
@@ -772,14 +764,6 @@ static int sia81xx_resume(
 	if (NULL == sia81xx)
 		return -ENODEV;
 
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	pa_state_mark = PA_PLAY_STATE;
-
-	if (speaker_mute_control == 1) {
-		pr_info("%s: speaker_mute_control == 1, don't resume sia81xx\n", __func__);
-		return 0;
-	}
-	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 	if (is_chip_type_supported(sia81xx->chip_type) &&
 		!sia81xx_is_chip_en(sia81xx)) {
@@ -865,9 +849,6 @@ static int sia81xx_suspend(
 		}
 	}
 
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	pa_state_mark = PA_MUTE_STATE;
-	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 	return 0;
 }
@@ -1602,56 +1583,6 @@ int sia81xx_volme_boost_set(
 //EXPORT_SYMBOL(sia81xx_volme_boost_put);
 #endif /* OPLUS_AUDIO_PA_BOOST_VOLTAGE */
 
-#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-static int sia81xx_spk_mute_ctrl_get(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = speaker_mute_control;
-	pr_info("%s: speaker_mute_control = %d\n", __func__, speaker_mute_control);
-	return 0;
-}
-static int sia81xx_spk_mute_ctrl_put(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
-	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
-	sia81xx_dev_t *sia81xx = snd_soc_component_get_drvdata(component);
-#else
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
-	sia81xx_dev_t *sia81xx = snd_soc_codec_get_drvdata(codec);
-#endif
-	int val = ucontrol->value.integer.value[0];
-
-	if (val == speaker_mute_control) {
-		pr_err("%s: Speaker mute is already %s\n",
-			__func__, val == 1 ? "on" : "off");
-		return 1;
-	} else {
-		pr_info("%s: Speaker mute set to %s\n",
-			__func__, val == 1 ? "on" : "off");
-		speaker_mute_control = val;
-	}
-
-	if (val) {
-		pr_info("%s: mute speaker\n", __func__);
-		sia81xx_suspend(sia81xx);
-	} else {
-		pr_info("%s: unmute speaker\n", __func__);
-		if (pa_state_mark == PA_PLAY_STATE) {
-			sia81xx_resume(sia81xx);
-		}
-	}
-
-	return 0;
-}
-
-static char const *spk_mute_ctrl_text[] = {
-	"Off", "On"
-};
-
-static const struct soc_enum spk_mute_ctrl_enum =
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_mute_ctrl_text), spk_mute_ctrl_text);
-#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 
 static const char *const power_function[] = { "Off", "On" };
 #ifdef ALGO_SWITCH_EN
@@ -1686,10 +1617,6 @@ static const struct snd_kcontrol_new sia81xx_controls[] = {
 #endif
 	SOC_ENUM_EXT("Sia81xx Audio Scene", audio_scene_enum, 
 			sia81xx_audio_scene_get, sia81xx_audio_scene_set),
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	SOC_ENUM_EXT("Speaker_Mute_Switch", spk_mute_ctrl_enum,
-			sia81xx_spk_mute_ctrl_get, sia81xx_spk_mute_ctrl_put),
-	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 };
 
 #ifdef OPLUS_AUDIO_PA_BOOST_VOLTAGE
@@ -1704,10 +1631,6 @@ static const struct snd_kcontrol_new sia81xx_controls_new[] = {
 			sia81xx_audio_scene_get, sia81xx_audio_scene_set),
 	SOC_ENUM_EXT("Sia81xx Volme Boost", volume_boost_enum,
 			sia81xx_volme_boost_get, sia81xx_volme_boost_set),
-	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
-	SOC_ENUM_EXT("Speaker_Mute_Switch", spk_mute_ctrl_enum,
-			sia81xx_spk_mute_ctrl_get, sia81xx_spk_mute_ctrl_put),
-	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 };
 #endif /* OPLUS_AUDIO_PA_BOOST_VOLTAGE */
 

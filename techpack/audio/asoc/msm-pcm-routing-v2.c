@@ -8315,17 +8315,6 @@ static const struct snd_kcontrol_new quin_mi2s_rx_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_QUINARY_MI2S_RX,
 	MSM_BACKEND_DAI_SLIMBUS_8_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_3", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_QUINARY_MI2S_RX,
-	MSM_BACKEND_DAI_TX_CDC_DMA_TX_3, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
-
-	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_QUINARY_MI2S_RX,
-	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 };
 
 static const struct snd_kcontrol_new sen_mi2s_rx_port_mixer_controls[] = {
@@ -8396,17 +8385,6 @@ static const struct snd_kcontrol_new tert_mi2s_rx_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 	MSM_BACKEND_DAI_SLIMBUS_8_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_3", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
-	MSM_BACKEND_DAI_TX_CDC_DMA_TX_3, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
-
-	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
-	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 };
 
 static const struct snd_kcontrol_new sec_mi2s_rx_port_mixer_controls[] = {
@@ -30262,12 +30240,6 @@ static const struct snd_kcontrol_new rx_cdc_dma_rx_0_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_TERTIARY_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
 
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_RX_CDC_DMA_RX_0,
-	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 };
 
 static const struct snd_kcontrol_new rx_cdc_dma_rx_1_port_mixer_controls[] = {
@@ -31597,56 +31569,8 @@ static int msm_routing_put_app_type_gain_control(struct snd_kcontrol *kcontrol,
 	return ret ? -EINVAL : 0;
 }
 
-#ifdef OPLUS_FEATURE_KTV
-static int audio_loopback_reverb_set_param(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	int i, j, fe_id, be_id, port_type;
-	int ret = 0;
-	unsigned long copp;
-	int32_t params[20];
-	struct msm_pcm_routing_bdai_data *bedai;
-
-	pr_debug("%s\n", __func__);
-
-	for (i = 0; i < 20; i++) {
-		params[i] = (int32_t)(ucontrol->value.integer.value[i]);
-	}
-	port_type =MSM_AFE_PORT_TYPE_TX;
-	mutex_lock(&routing_lock);
-	for (be_id = 0; be_id < MSM_BACKEND_DAI_MAX; be_id++) {
-		if (is_be_dai_extproc(be_id))
-			continue;
-
-		bedai = &msm_bedais[be_id];
-		if (afe_get_port_type(bedai->port_id) != port_type)
-			continue;
-
-		if (!bedai->active)
-			continue;
-
-		for (fe_id = 0; fe_id < MSM_FRONTEND_DAI_MAX; fe_id++) {
-			if (!test_bit(fe_id, &bedai->fe_sessions[0]))
-				continue;
-
-			copp = session_copp_map[fe_id][MSM_AFE_PORT_TYPE_TX][be_id];
-			for (j = 0; j < MAX_COPPS_PER_PORT; j++) {
-				if (!test_bit(j, &copp))
-					continue;
-				ret |= adm_set_reverb_param(bedai->port_id, j, params);
-			}
-		}
-	}
-	mutex_unlock(&routing_lock);
-	return ret ? -EINVAL : 0;
-}
-#endif /* OPLUS_FEATURE_KTV */
 
 static const struct snd_kcontrol_new app_type_cfg_controls[] = {
-	#ifdef OPLUS_FEATURE_KTV
-	SOC_SINGLE_MULTI_EXT("AudioLoopback", SND_SOC_NOPM, 0,
-	0x100, 0, 20, NULL, audio_loopback_reverb_set_param),
-	#endif /* OPLUS_FEATURE_KTV */
 	SOC_SINGLE_MULTI_EXT("App Type Config", SND_SOC_NOPM, 0,
 	0x7FFFFFFF, 0, 128, msm_routing_get_app_type_cfg_control,
 	msm_routing_put_app_type_cfg_control),
@@ -32863,18 +32787,8 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("CDC_DMA_UL_HL", "CDC_DMA_HOSTLESS Capture",
 		0, 0, 0, 0),
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	SND_SOC_DAPM_AIF_IN("TX3_CDC_DMA_DL_HL",
-		"TX3_CDC_DMA_HOSTLESS Playback", 0, 0, 0, 0),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	SND_SOC_DAPM_AIF_OUT("TX3_CDC_DMA_UL_HL",
 		"TX3_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	SND_SOC_DAPM_AIF_IN("TX4_CDC_DMA_DL_HL",
-		"TX4_CDC_DMA_HOSTLESS Playback", 0, 0, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("TX4_CDC_DMA_UL_HL",
-		"TX4_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	SND_SOC_DAPM_AIF_OUT("CPE_LSM_UL_HL", "CPE LSM capture",
 		0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SLIM1_DL_HL", "SLIMBUS1_HOSTLESS Playback",
@@ -34976,16 +34890,6 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 };
 #endif
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-static const struct snd_soc_dapm_route intercon_oppo_lookback[] =
-{
-	{"QUIN_MI2S_RX_DL_HL", "Switch", "TX3_CDC_DMA_DL_HL"},
-	{"RX_CDC_DMA_RX_0_DL_HL", "Switch", "TX3_CDC_DMA_DL_HL"},
-	/*Below add for headset mic loopback*/
-	{"QUIN_MI2S_RX_DL_HL", "Switch", "TX4_CDC_DMA_DL_HL"},
-	{"RX_CDC_DMA_RX_0_DL_HL", "Switch", "TX4_CDC_DMA_DL_HL"},
-};
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 static const struct snd_soc_dapm_route intercon[] = {
 	{"SLIMBUS_0_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
@@ -36229,9 +36133,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"RX_CDC_DMA_RX_1_DL_HL", "Switch", "CDC_DMA_DL_HL"},
 	{"RX_CDC_DMA_RX_1", NULL, "RX_CDC_DMA_RX_1_DL_HL"},
 	{"TX3_CDC_DMA_UL_HL", NULL, "TX_CDC_DMA_TX_3"},
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	{"TX4_CDC_DMA_UL_HL", NULL, "TX_CDC_DMA_TX_4"},
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	{"LSM1 Mixer", "SLIMBUS_0_TX", "SLIMBUS_0_TX"},
 	{"LSM1 Mixer", "SLIMBUS_1_TX", "SLIMBUS_1_TX"},
 	{"LSM1 Mixer", "SLIMBUS_3_TX", "SLIMBUS_3_TX"},
@@ -41268,9 +41169,6 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"WSA_CDC_DMA_RX_0 Port Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"RX_CDC_DMA_RX_0 Port Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"RX_CDC_DMA_RX_1 Port Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	{"RX_CDC_DMA_RX_0 Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	{"WSA_CDC_DMA_RX_0 Port Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
 	{"RX_CDC_DMA_RX_0 Port Mixer", "SEC_MI2S_TX", "SEC_MI2S_TX"},
 
@@ -41395,10 +41293,6 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"TERT_MI2S_RX Port Mixer", "SENARY_MI2S_TX", "SENARY_MI2S_TX"},
 	{"TERT_MI2S_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
 	{"TERT_MI2S_RX Port Mixer", "SLIM_8_TX", "SLIMBUS_8_TX"},
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	{"TERT_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
-	{"TERT_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_RX Port Mixer"},
 
 	{"QUAT_MI2S_RX Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
@@ -41423,10 +41317,6 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"QUIN_MI2S_RX Port Mixer", "SENARY_MI2S_TX", "SENARY_MI2S_TX"},
 	{"QUIN_MI2S_RX Port Mixer", "SLIM_0_TX", "SLIMBUS_0_TX"},
 	{"QUIN_MI2S_RX Port Mixer", "SLIM_8_TX", "SLIMBUS_8_TX"},
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	{"QUIN_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
-	{"QUIN_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	{"QUIN_MI2S_RX", NULL, "QUIN_MI2S_RX Port Mixer"},
 
 	{"SEN_MI2S_RX Port Mixer", "PRI_MI2S_TX", "PRI_MI2S_TX"},
@@ -43157,10 +43047,6 @@ static int msm_routing_probe(struct snd_soc_component *component)
 
 	snd_soc_dapm_ignore_suspend(&component->dapm, "BE_OUT");
 	snd_soc_dapm_ignore_suspend(&component->dapm, "BE_IN");
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	snd_soc_dapm_add_routes(&component->dapm, intercon_oppo_lookback,
-		ARRAY_SIZE(intercon_oppo_lookback));
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	snd_soc_dapm_add_routes(&component->dapm, intercon,
 		ARRAY_SIZE(intercon));
 

@@ -27,22 +27,7 @@
   __tracepoint_android_vh_ufs_latency_hist
 #endif /* OPLUS_FEATURE_UFS_DRIVER */
 
-#ifdef OPLUS_FEATURE_SHUTDOWN_DETECT
-  send_sig_info
-  filp_open
-  kernel_write
-  kernel_read
-  filp_close
-  vfs_fsync
-  kernel_power_off
-  ktime_get_real_ts64
-  kmsg_dump_get_line
-#endif
 
-#ifdef OPLUS_FEATURE_QCOM_PMICWD
-  rtc_set_alarm
-  rtc_read_alarm
-#endif
   do_gettimeofday
   device_remove_bin_file
   snd_pcm_format_physical_width
@@ -52,9 +37,6 @@
   drm_crtc_vblank_count_and_time
 #endif
 
-#ifdef CONFIG_OPLUS_FEATURE_PMIC_MONITOR
-  qcom_smem_get
-#endif
 
 #ifdef CONFIG_OPLUS_RF_CABLE_MONITOR
   qcom_smem_virt_to_phys
@@ -82,12 +64,6 @@
   netlink_rcv_skb
 #endif
 
-#ifdef CONFIG_OPLUS_FEATURE_THEIA
-  sched_show_task
-  handle_sysrq
-  touch_softlockup_watchdog
-  init_task
-#endif
 
 #ifdef CONFIG_QCOM_KGSL
   msm_drm_register_client
@@ -125,11 +101,6 @@
   thermal_zone_device_unregister
 #endif
 
-#ifdef OPLUS_FEATURE_APP_MONITOR
-  tcp_event_data_recv
-  tcp_event_new_data_sent
-  __tcp_retransmit_skb
-#endif
 
 #ifdef OPLUS_FEATURE_WIFI_DHCP
   register_net_sysctl

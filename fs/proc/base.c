@@ -101,29 +101,13 @@
 
 #include "../../lib/kstrtox.h"
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-#include <linux/healthinfo/jank_monitor.h>
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 #ifdef CONFIG_OPLUS_FEATURE_IM
 #include <linux/im/im.h>
 #endif
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-#define GLOBAL_SYSTEM_UID KUIDT_INIT(1000)
-#define GLOBAL_SYSTEM_GID KGIDT_INIT(1000)
-extern const struct file_operations proc_ux_state_operations;
-extern bool is_special_entry(struct dentry *dentry, const char* special_proc);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 //#ifdef OPLUS_FEATURE_HEALTHINFO
 #include <linux/healthinfo/ion.h>
 //#endif /* OPLUS_FEATURE_HEALTHINFO */
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_HEALTHINFO
-extern unsigned long gpu_total(void);
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
  *	certainly an error.  Permission checks need to happen during
@@ -1957,12 +1941,6 @@ static int pid_revalidate(struct dentry *dentry, unsigned int flags)
 
 	if (task) {
 		pid_update_inode(task, inode);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		if (is_special_entry(dentry, "ux_state")) {
-			inode->i_uid = GLOBAL_SYSTEM_UID;
-			inode->i_gid = GLOBAL_SYSTEM_GID;
-		}
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 		put_task_struct(task);
 		return 1;
 	}
@@ -3453,9 +3431,6 @@ static const struct file_operations proc_st_tpd_operation = {
 static const struct file_operations proc_task_operations;
 static const struct inode_operations proc_task_inode_operations;
 
-#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-#include "va_feature_node.h"
-#endif
 
 static const struct pid_entry tgid_base_stuff[] = {
 	DIR("task",       S_IRUGO|S_IXUGO, proc_task_inode_operations, proc_task_operations),
@@ -3494,9 +3469,6 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("cmdline",    S_IRUGO, proc_pid_cmdline_ops),
 	ONE("stat",       S_IRUGO, proc_tgid_stat),
 	ONE("statm",      S_IRUGO, proc_pid_statm),
-#ifdef OPLUS_FEATURE_PERFORMANCE
-	ONE("statm_as",   S_IRUGO, proc_pid_statm_as),
-#endif /* OPLUS_FEATURE_PERFORMANCE */
 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_NUMA
 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),
@@ -3581,17 +3553,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 #ifdef CONFIG_PROC_PID_ARCH_STATUS
 	ONE("arch_status", S_IRUGO, proc_pid_arch_status),
 #endif
-#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-	REG("va_feature", S_IRUSR|S_IWUSR, proc_va_feature_operations),
-#endif
 #ifdef CONFIG_OPLUS_FEATURE_IM
 	ONE("im_flag", 0444, proc_im_flag),
 #endif
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-	REG("jank_info", S_IRUGO | S_IWUGO, proc_jank_trace_operations),
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 #ifdef CONFIG_OPLUS_FEATURE_TPD
 	REG("tpd", 0644, proc_tpd_operation),
 	REG("tpd_st", 0644, proc_st_tpd_operation),
@@ -3920,9 +3884,6 @@ static const struct pid_entry tid_base_stuff[] = {
 	REG("cmdline",   S_IRUGO, proc_pid_cmdline_ops),
 	ONE("stat",      S_IRUGO, proc_tid_stat),
 	ONE("statm",     S_IRUGO, proc_pid_statm),
-#ifdef OPLUS_FEATURE_PERFORMANCE
-	ONE("statm_as",   S_IRUGO, proc_pid_statm_as),
-#endif /* OPLUS_FEATURE_PERFORMANCE */
 	REG("maps",      S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_PROC_CHILDREN
 	REG("children",  S_IRUGO, proc_tid_children_operations),
@@ -3996,9 +3957,6 @@ static const struct pid_entry tid_base_stuff[] = {
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
 #endif
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	REG("ux_state", S_IRUGO | S_IWUGO, proc_ux_state_operations),
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 #ifdef CONFIG_OPLUS_FEATURE_IM
 	ONE("im_flag", 0444, proc_im_flag),
 #endif

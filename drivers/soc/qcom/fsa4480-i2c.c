@@ -18,9 +18,6 @@
 #include <linux/gpio.h>
 #endif /* VENDOR_EDIT */
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-#include <linux/proc_fs.h>
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 #define FSA4480_I2C_NAME	"fsa4480-driver"
 
@@ -544,25 +541,6 @@ static void fsa4480_update_reg_defaults(struct regmap *regmap)
 				   fsa_reg_i2c_defaults[i].val);
 }
 
-#ifdef OPLUS_FEATURE_AUDIO_FTM
-static ssize_t fsa4480_exist_read(struct file *p_file,
-			 char __user *puser_buf, size_t count, loff_t *p_offset)
-{
-	return 0;
-}
-
-static ssize_t fsa4480_exist_write(struct file *p_file,
-			 const char __user *puser_buf,
-			 size_t count, loff_t *p_offset)
-{
-	return 0;
-}
-
-static const struct file_operations fsa4480_exist_operations = {
-	.read = fsa4480_exist_read,
-	.write = fsa4480_exist_write,
-};
-#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 static int fsa4480_probe(struct i2c_client *i2c,
 			 const struct i2c_device_id *id)
@@ -570,9 +548,6 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	struct fsa4480_priv *fsa_priv;
 	u32 use_powersupply = 0;
 	int rc = 0;
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	u32 switch_status = 0;
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 	#ifdef VENDOR_EDIT
 	pr_err("%s enter fsa4480_probe\n", __func__);
 	#endif /* VENDOR_EDIT */
@@ -657,16 +632,6 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		((fsa_priv->fsa4480_notifier).rwsem);
 	fsa_priv->fsa4480_notifier.head = NULL;
 
-	#ifdef OPLUS_FEATURE_AUDIO_FTM
-	if ((regmap_read(fsa_priv->regmap, FSA4480_SWITCH_STATUS1,
-				&switch_status)) == 0) {
-		if (!proc_create("audio_switch_exist", 0644, NULL,
-				&fsa4480_exist_operations)) {
-			pr_err("%s : Failed to register proc interface\n",
-				__func__);
-		}
-	}
-	#endif /* OPLUS_FEATURE_AUDIO_FTM */
 
 	return 0;
 

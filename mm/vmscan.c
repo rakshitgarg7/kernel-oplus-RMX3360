@@ -3756,9 +3756,6 @@ static int balance_pgdat(pg_data_t *pgdat, int order, int classzone_idx)
 		.gfp_mask = GFP_KERNEL,
 		.order = order,
 		.may_unmap = 1,
-#ifdef OPLUS_FEATURE_PERFORMANCE
-		.may_swap = 1,
-#endif
 	};
 
 	set_task_reclaim_state(current, &sc.reclaim_state);
@@ -3846,9 +3843,7 @@ restart:
 		 * reclaim will be aborted.
 		 */
 		sc.may_writepage = !laptop_mode && !nr_boost_reclaim;
-#ifndef OPLUS_FEATURE_PERFORMANCE
 		sc.may_swap = !nr_boost_reclaim;
-#endif
 
 		/*
 		 * Do some background aging of the anon list, to give
@@ -4052,25 +4047,6 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int alloc_order, int reclaim_o
 	}
 	finish_wait(&pgdat->kswapd_wait, &wait);
 }
-#ifdef OPLUS_FEATURE_PERFORMANCE
-extern long sched_setaffinity(pid_t pid, const struct cpumask *in_mask);
-static inline int set_thread_affinity_littlecore(struct task_struct *tsk)
-{
-	int ret;
-	struct cpumask mask;
-
-	cpumask_clear(&mask);
-
-	cpumask_set_cpu(0, &mask);
-	cpumask_set_cpu(1, &mask);
-	cpumask_set_cpu(2, &mask);
-	cpumask_set_cpu(3, &mask);
-
-	ret = sched_setaffinity(tsk->pid, &mask);
-
-	return ret;
-}
-#endif
 
 /*
  * The background pageout daemon, started as a kernel thread
@@ -4091,24 +4067,11 @@ static int kswapd(void *p)
 	unsigned int classzone_idx = MAX_NR_ZONES - 1;
 	pg_data_t *pgdat = (pg_data_t*)p;
 	struct task_struct *tsk = current;
-#if defined(OPLUS_FEATURE_MULTI_KSWAPD) && defined(CONFIG_KSWAPD_UNBIND_MAX_CPU)
-	struct cpumask mask;
-	struct cpumask *cpumask = &mask;
-
-	cpumask_copy(cpumask, cpumask_of_node(pgdat->node_id));
-	if (kswapd_unbind_cpu != -1 &&
-			cpumask_test_cpu(kswapd_unbind_cpu, cpumask))
-		cpumask_clear_cpu(kswapd_unbind_cpu, cpumask);
-#else
 	const struct cpumask *cpumask = cpumask_of_node(pgdat->node_id);
-#endif
 
 	if (!cpumask_empty(cpumask))
 		set_cpus_allowed_ptr(tsk, cpumask);
 
-#ifdef OPLUS_FEATURE_PERFORMANCE
-	set_thread_affinity_littlecore(current);
-#endif
 
 	/*
 	 * Tell the memory management that we're a "memory allocator",

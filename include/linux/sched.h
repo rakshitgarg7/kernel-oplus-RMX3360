@@ -33,11 +33,6 @@
 #include <linux/android_kabi.h>
 #include <linux/android_vendor.h>
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-#include <linux/healthinfo/jank_monitor.h>
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
@@ -224,13 +219,6 @@ enum task_boost_type {
 
 #endif
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-extern int sysctl_sched_assist_enabled;
-extern int sysctl_sched_assist_scene;
-
-extern int sysctl_slide_boost_enabled;
-extern int sysctl_boost_task_threshold;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 #ifdef CONFIG_KSWAPD_UNBIND_MAX_CPU
 extern int kswapd_unbind_cpu;
@@ -1369,9 +1357,6 @@ struct task_struct {
 	int				latency_record_count;
 	struct latency_record		latency_record[LT_SAVECOUNT];
 #endif
-#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
-	atomic64_t ions;
-#endif
 	/*
 	 * Time slack values; these are used to round up poll() and
 	 * select() etc timeout values. These are in nanoseconds.
@@ -1478,32 +1463,6 @@ struct task_struct {
 	/* Used by LSM modules for access restriction: */
 	void				*security;
 #endif
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	int ux_state;
-	atomic64_t inherit_ux;
-	struct list_head ux_entry;
-	int ux_depth;
-	u64 enqueue_time;
-	u64 inherit_ux_start;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-//#ifdef CONFIG_UXCHAIN_V2
-	int ux_once;
-	u64 get_mmlock_ts;
-	int get_mmlock;
-#endif
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-	int jank_trace;
-	struct jank_monitor_info jank_info;
-	unsigned in_mutex:1;
-	unsigned in_downread:1;
-	unsigned in_downwrite:1;
-	unsigned in_futex:1;
-	unsigned in_binder:1;
-	unsigned in_epoll:1;
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 #ifdef CONFIG_OPLUS_FEATURE_IM
 	int im_flag;
 #endif

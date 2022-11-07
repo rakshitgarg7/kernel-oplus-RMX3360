@@ -20,10 +20,6 @@
 #include "debug.h"
 #include "genl.h"
 
-#ifdef OPLUS_FEATURE_WIFI_MAC
-#include <soc/oppo/boot_mode.h>
-#include <soc/oplus/system/oplus_project.h>
-#endif /* OPLUS_FEATURE_WIFI_MAC */
 
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
@@ -548,7 +544,6 @@ static int cnss_setup_dms_mac(struct cnss_plat_data *plat_priv)
 	/* DTSI property use-nv-mac is used to force DMS MAC address for WLAN.
 	 * Thus assert on failure to get MAC from DMS even after retries
 	 */
-#ifndef OPLUS_FEATURE_WIFI_MAC
 	if (plat_priv->use_nv_mac) {
 		for (i = 0; i < CNSS_DMS_QMI_CONNECTION_WAIT_RETRY; i++) {
 			if (plat_priv->dms.mac_valid)
@@ -565,24 +560,6 @@ static int cnss_setup_dms_mac(struct cnss_plat_data *plat_priv)
 			return -EINVAL;
 		}
 	}
-#else
-	if ((get_boot_mode() !=  MSM_BOOT_MODE__WLAN) && plat_priv->use_nv_mac) {
-		for (i = 0; i < CNSS_DMS_QMI_CONNECTION_WAIT_RETRY; i++) {
-			if (plat_priv->dms.mac_valid)
-				break;
-
-			ret = cnss_qmi_get_dms_mac(plat_priv);
-			if (ret == 0)
-				break;
-			msleep(CNSS_DMS_QMI_CONNECTION_WAIT_MS);
-		}
-		if (!plat_priv->dms.mac_valid) {
-			cnss_pr_err("Unable to get MAC from DMS after retries\n");
-			CNSS_ASSERT(0);
-			return -EINVAL;
-		}
-	}
-#endif /* OPLUS_FEATURE_WIFI_MAC */
 qmi_send:
 	if (plat_priv->dms.mac_valid)
 		ret =
@@ -1657,34 +1634,6 @@ static int cnss_cold_boot_cal_done_hdlr(struct cnss_plat_data *plat_priv,
 	case CNSS_CAL_DONE:
 		cnss_pr_dbg("Calibration completed successfully\n");
 
-		#ifdef OPLUS_FEATURE_WIFI_MAC
-		if(get_Modem_Version() == 8){
-			cnss_pr_dbg("get_Modem_Version = %d\n", get_Modem_Version());
-			cnss_l7e_vreg_off(plat_priv, &plat_priv->vreg_list);   //pull low LDO7e
-			msleep(10);
-
-			//1st time
-			cnss_bus_pa_en_rw(plat_priv,1);        //2.4G PA_EN chain0/1 output high
-			msleep(1);
-			cnss_bus_pa_en_rw(plat_priv,0);        //2.4G PA_EN chain0/1 output low
-			msleep(1);
-
-			//2nd time
-			cnss_bus_pa_en_rw(plat_priv,1);        //2.4G PA_EN chain0/1 output high
-			msleep(1);
-			cnss_bus_pa_en_rw(plat_priv,0);        //2.4G PA_EN chain0/1 output low
-			msleep(1);
-
-			//3rd time
-			cnss_bus_pa_en_rw(plat_priv,1);        //2.4G PA_EN chain0/1 output high
-			msleep(1);
-			cnss_bus_pa_en_rw(plat_priv,0);        //2.4G PA_EN chain0/1 output low
-			msleep(1);
-
-			msleep(10);
-			cnss_l7e_vreg_on(plat_priv, &plat_priv->vreg_list);  //pull high LDO7e
-		}
-		#endif /* OPLUS_FEATURE_WIFI_MAC */
 
 		plat_priv->cal_done = true;
 		break;

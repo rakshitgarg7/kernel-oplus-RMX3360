@@ -74,11 +74,6 @@
 #include <linux/uaccess.h>
 #include <asm/processor.h>
 
-#ifdef OPLUS_FEATURE_TASK_CPUSTATS
-#ifdef CONFIG_OPLUS_CTP
-#include <linux/task_cpustats.h>
-#endif
-#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
 #ifdef CONFIG_X86
 #include <asm/nmi.h>
 #include <asm/stacktrace.h>
@@ -111,9 +106,6 @@
 #include <soc/oplus/system/hung_task_enhance.h>
 #endif
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-#include <linux/sched_assist/sched_assist_slide.h>
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 /* External variables not in a header file. */
 extern int suid_dumpable;
@@ -137,10 +129,6 @@ extern int sysctl_nr_trim_pages;
 static int sixty = 60;
 #endif
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-//#ifdef CONFIG_UXCHAIN_V2
-int sysctl_uxchain_v2 = 1;
-#endif
 
 static int __maybe_unused neg_one = -1;
 static int __maybe_unused one = 1;
@@ -357,10 +345,6 @@ static int max_sched_tunable_scaling = SCHED_TUNABLESCALING_END-1;
 #endif /* CONFIG_SMP */
 #endif /* CONFIG_SCHED_DEBUG */
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-int sysctl_sched_assist_enabled = 1;
-int sysctl_sched_assist_scene = 0;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 #ifdef CONFIG_COMPACTION
 static int min_extfrag_threshold;
@@ -1643,66 +1627,6 @@ static struct ctl_table kern_table[] = {
 		.extra2		= SYSCTL_ONE,
 	},
 #endif
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	{
-		.procname	= "sched_assist_enabled",
-		.data		= &sysctl_sched_assist_enabled,
-		.maxlen		= sizeof(int),
-		.mode		= 0666,
-		.proc_handler	= proc_dointvec,
-	},
-	{
-		.procname	= "sched_assist_scene",
-		.data		= &sysctl_sched_assist_scene,
-		.maxlen		= sizeof(int),
-		.mode		= 0666,
-		.proc_handler   = sysctl_sched_assist_scene_handler,
-	},
-	{
-		.procname	= "slide_boost_enabled",
-		.data		= &sysctl_slide_boost_enabled,
-		.maxlen 	= sizeof(int),
-		.mode		= 0666,
-		.proc_handler = proc_dointvec,
-	},
-	{
-		.procname	= "boost_task_threshold",
-		.data		= &sysctl_boost_task_threshold,
-		.maxlen 	= sizeof(int),
-		.mode		= 0666,
-		.proc_handler = proc_dointvec,
-	},
-	{
-		.procname	= "frame_rate",
-		.data		= &sysctl_frame_rate,
-		.maxlen 	= sizeof(int),
-		.mode		= 0666,
-		.proc_handler = proc_dointvec,
-	},
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
-#ifdef OPLUS_FEATURE_TASK_CPUSTATS
-#ifdef CONFIG_OPLUS_CTP
-	{
-		.procname	= "task_cpustats_enable",
-		.data		= &sysctl_task_cpustats_enable,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0666,
-		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= SYSCTL_ZERO,
-		.extra2		= &one,
-	},
-#endif
-#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-//#ifdef CONFIG_UXCHAIN_V2
-	{
-		.procname	= "uxchain_v2",
-		.data		= &sysctl_uxchain_v2,
-		.maxlen = sizeof(int),
-		.mode		= 0666,
-		.proc_handler = proc_dointvec,
-	},
-#endif
 
 	{ }
 };
@@ -1942,12 +1866,8 @@ static struct ctl_table vm_table[] = {
 		.procname	= "compact_memory",
 		.data		= &sysctl_compact_memory,
 		.maxlen		= sizeof(int),
-#ifdef OPLUS_FEATURE_PERFORMANCE
-		.mode		= 0222,
-#else
 		.mode		= 0200,
 
-#endif /*OPLUS_FEATURE_PERFORMANCE*/
 		.proc_handler	= sysctl_compaction_handler,
 	},
 	{

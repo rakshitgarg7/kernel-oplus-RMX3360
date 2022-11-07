@@ -62,10 +62,6 @@
 #include "locking/rtmutex_common.h"
 #include <trace/hooks/futex.h>
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-#include <linux/sched_assist/sched_assist_futex.h>
-#include <linux/sched_assist/sched_assist_common.h>
-#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 /*
  * READ this before attempting to hack on futexes!
@@ -237,10 +233,6 @@ struct futex_q {
 	struct plist_node list;
 
 	struct task_struct *task;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	struct task_struct *owner;
-	int ux_waitings;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	spinlock_t *lock_ptr;
 	union futex_key key;
 	struct futex_pi_state *pi_state;
@@ -1723,13 +1715,6 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 			if (!(this->bitset & bitset))
 				continue;
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-			if (sysctl_sched_assist_enabled) {
-				if (this->ux_waitings > 0) {
-					futex_unset_inherit_ux_refs(this->owner, this->ux_waitings);
-				}
-			}
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 			mark_wake_futex(&wake_q, this);
 
 
@@ -2386,11 +2371,6 @@ static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	 * the others are woken last, in FIFO order.
 	 */
 	prio = min(current->normal_prio, MAX_RT_PRIO);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (sysctl_sched_assist_enabled && test_task_ux(current)) {
-		prio = min(current->normal_prio, MAX_RT_PRIO - 1);
-	}
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 	plist_node_init(&q->list, prio);
 	trace_android_vh_alter_futex_plist_add(&q->list, &hb->chain, &already_on_hb);
@@ -2746,16 +2726,6 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 	 * access to the hash list and forcing another memory barrier.
 	 */
 	set_current_state(TASK_INTERRUPTIBLE);
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (sysctl_sched_assist_enabled) {
-		if (!timeout) {
-			int refs_count = futex_set_inherit_ux_refs_v2(q->owner, current);
-			if (refs_count) {
-				q->ux_waitings = 1;
-			}
-		}
-	}
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	queue_me(q, hb);
 
 	/* Arm the timer */
@@ -2773,17 +2743,7 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 		 * is no timeout, or if it has yet to expire.
 		 */
 		if (!timeout || timeout->task) {
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-			current->in_futex = 1;
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 			freezable_schedule();
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_JANK_INFO
-			current->in_futex = 0;
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 		}
 
 	}
@@ -2866,14 +2826,9 @@ out:
 	return ret;
 }
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
-		ktime_t *abs_time, u32 bitset, u32 owner_tid)
-#else /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 		      ktime_t *abs_time, u32 bitset)
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 {
 	struct hrtimer_sleeper timeout, *to;
 	struct restart_block *restart;
@@ -2884,18 +2839,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 	if (!bitset)
 		return -EINVAL;
 	q.bitset = bitset;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if ((bitset == FUTEX_BITSET_MATCH_ANY) && test_task_ux(current)) {
-		struct task_struct* owner_task = get_futex_owner_by_pid_v2(owner_tid);
-		if (owner_task != NULL) {
-			if ((current->tgid == owner_task->tgid) || (flags & FLAGS_SHARED)) {
-				q.owner = owner_task;
-			} else {
-				put_task_struct(owner_task);
-			}
-		}
-	}
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 	to = futex_setup_timer(abs_time, &timeout, flags,
 			       current->timer_slack_ns);
@@ -2937,9 +2880,6 @@ retry:
 	restart->futex.time = *abs_time;
 	restart->futex.bitset = bitset;
 	restart->futex.flags = flags | FLAGS_HAS_TIMEOUT;
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	restart->futex.uaddr2 = (u32*)(long)owner_tid;
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 	ret = set_restart_fn(restart, futex_wait_restart);
 
@@ -2948,10 +2888,6 @@ out:
 		hrtimer_cancel(&to->timer);
 		destroy_hrtimer_on_stack(&to->timer);
 	}
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	if (q.owner)
-		put_task_struct(q.owner);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	return ret;
 }
 
@@ -2967,13 +2903,8 @@ static long futex_wait_restart(struct restart_block *restart)
 	}
 	restart->fn = do_no_restart_syscall;
 
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-	return (long)futex_wait(uaddr, restart->futex.flags,
-				restart->futex.val, tp, restart->futex.bitset, (u32)(restart->futex.uaddr2));
-#else /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	return (long)futex_wait(uaddr, restart->futex.flags,
 				restart->futex.val, tp, restart->futex.bitset);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 }
 
 
@@ -3960,11 +3891,7 @@ long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 		val3 = FUTEX_BITSET_MATCH_ANY;
 		/* fall through */
 	case FUTEX_WAIT_BITSET:
-#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
-		return futex_wait(uaddr, flags, val, timeout, val3, (u32)(long)uaddr2);
-#else /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 		return futex_wait(uaddr, flags, val, timeout, val3);
-#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 	case FUTEX_WAKE:
 		val3 = FUTEX_BITSET_MATCH_ANY;
 		/* fall through */

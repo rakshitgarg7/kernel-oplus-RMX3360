@@ -27,10 +27,6 @@
 #include <linux/uaccess.h>
 
 #include "internal.h"
-#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-#include <linux/reserve_area.h>
-#include "arch_mmap.h"
-#endif
 
 /**
  * kfree_const - conditionally free memory
@@ -499,10 +495,6 @@ unsigned long vm_mmap_pgoff(struct file *file, unsigned long addr,
 			return -EINTR;
 		ret = do_mmap_pgoff(file, addr, len, prot, flag, pgoff,
 				    &populate, &uf);
-#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
-		if (ret == -ENOMEM)
-			update_oom_pid_and_time(len, ret, flag);
-#endif
 		up_write(&mm->mmap_sem);
 		userfaultfd_unmap_complete(mm, &uf);
 		if (populate)

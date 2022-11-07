@@ -1141,11 +1141,6 @@ const char * const vmstat_text[] = {
 	"nr_zspages",
 #endif
 	"nr_free_cma",
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_HEALTHINFO
-        "nr_ioncache_pages",
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 	/* enum numa_stat_item counters */
 #ifdef CONFIG_NUMA
 	"numa_hit",

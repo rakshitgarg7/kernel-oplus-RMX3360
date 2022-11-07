@@ -22,9 +22,6 @@
 #include "dsi_parser.h"
 #include "oplus_display_esd.h"
 
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-#include <soc/oplus/system/oplus_mm_kevent_fb.h>
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 #ifdef OPLUS_BUG_STABILITY
 #include "oplus_adfr.h"
@@ -862,9 +859,6 @@ static bool dsi_display_validate_reg_read(struct dsi_panel *panel)
 	int len = 0, *lenp;
 	int group = 0, count = 0;
 	struct drm_panel_esd_config *config;
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-	int rc = 0;
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	if (!panel)
 		return false;
@@ -882,42 +876,12 @@ static bool dsi_display_validate_reg_read(struct dsi_panel *panel)
 
 	for (j = 0; j < config->groups; ++j) {
 		for (i = 0; i < len; ++i) {
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-			/* Add for panel esd cmd debug */
-			if (!strcmp(panel->oplus_priv.vendor_name, "S6E3HC3")) {
-				if ((config->return_buf[i] != config->status_value[group + i])
-						&& (config->return_buf[i] != 0x9d)) {
-					DRM_ERROR("mismatch: 0x%x\n",config->return_buf[i]);
-					rc = -1;
-					break;
-				}
-			} else {
-				if (config->return_buf[i] != config->status_value[group + i]) {
-					DRM_ERROR("mismatch: 0x%x\n",
-					config->return_buf[i]);
-					rc = -1;
-					break;
-				}
-			}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		}
 
 		if (i == len)
 			return true;
 		group += len;
 	}
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-	if (rc <= 0) {
-		char payload[150] = "";
-		int cnt = 0;
-
-		cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "ESD:");
-		for (i = 0; i < len; ++i)
-			cnt += scnprintf(payload + cnt, sizeof(payload) - cnt, "[%02x] ", config->return_buf[i]);
-		DRM_ERROR("ESD check failed: %s\n", payload);
-		mm_fb_display_kevent(payload, MM_FB_KEY_RATELIMIT_1H, "ESD check failed");
-	}
-#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	return false;
 }

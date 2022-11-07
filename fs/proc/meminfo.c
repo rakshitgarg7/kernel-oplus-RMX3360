@@ -31,11 +31,6 @@
 #endif
 //#endif /* OPLUS_FEATURE_HEALTHINFO */
 
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_HEALTHINFO
-extern unsigned long gpu_total(void);
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
@@ -193,17 +188,6 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		hugetlb_report_meminfo(m);
 		arch_report_meminfo(m);
 	}
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#if defined CONFIG_ION && defined CONFIG_OPLUS_HEALTHINFO
-	show_val_kb(m, "IonTotalCache:   ", global_zone_page_state(NR_IONCACHE_PAGES));
-	show_val_kb(m, "IonTotalUsed:   ", ion_total() >> PAGE_SHIFT);
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
-#ifdef OPLUS_FEATURE_HEALTHINFO
-#ifdef CONFIG_OPLUS_HEALTHINFO
-	show_val_kb(m, "GPUTotalUsed:   ", gpu_total() >> PAGE_SHIFT);
-#endif
-#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 	return 0;
 }

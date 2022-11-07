@@ -724,9 +724,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		else {
 			pr_debug("%s: invalid Jack type %d\n",__func__, jack_type);
 		}
-#ifdef OPLUS_FEATURE_IMPEDANCE_MATCH
-		if (mbhc->enable_hp_impedance_detect) {
-		#endif /* OPLUS_FEATURE_IMPEDANCE_MATCH */
 		if (mbhc->mbhc_cb->hph_pa_on_status)
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(component);
 
@@ -792,9 +789,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 						WCD_MBHC_JACK_MASK);
 			}
 		}
-		#ifdef OPLUS_FEATURE_IMPEDANCE_MATCH
-		}
-		#endif /* OPLUS_FEATURE_IMPEDANCE_MATCH */
 		mbhc->hph_status |= jack_type;
 
 		if (jack_type == SND_JACK_HEADPHONE &&

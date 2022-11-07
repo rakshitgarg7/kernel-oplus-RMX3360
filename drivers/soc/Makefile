@@ -50,34 +50,5 @@ obj-$(CONFIG_HORAE_THERMAL_SHELL) += oplus/thermal/
 #ifdef OPLUS_FEATURE_ESIM
 obj-y += oplus/misc/
 #endif /* OPLUS_FEATURE_ESIM */
-#ifdef OPLUS_FEATURE_HEALTHINFO
-obj-$(CONFIG_OPLUS_HEALTHINFO)    +=  oplus/healthinfo/
-#endif /* OPLUS_FEATURE_HEALTHINFO */
-#ifdef OPLUS_FEATURE_MEMLEAK_DETECT
-#Add for svelte logging
 obj-$(CONFIG_SVELTE) +=  oplus/svelte/
-#endif /* OPLUS_FEATURE_MEMLEAK_DETECT */
-#ifdef OPLUS_FEATURE_LOWMEM_DBG
-obj-$(CONFIG_OPLUS_FEATURE_LOWMEM_DBG) += oplus/lowmem_dbg/
-#endif /* OPLUS_FEATURE_LOWMEM_DBG */
-
-#ifdef OPLUS_FEATURE_IM
-#ted.lin@optimization add for im module
-obj-$(CONFIG_OPLUS_FEATURE_IM) += oplus/im/
-#endif /* OPLUS_FEATURE_IM */
-
-#ifdef OPLUS_FEATURE_MIDAS_DEVICE
-obj-$(CONFIG_OPLUS_FEATURE_MIDAS_DEVICE)    += oplus/midas/
-#endif
-
-#ifdef OPLUS_FEATURE_CPUFREQ_BOUNCING
-obj-$(CONFIG_OPLUS_FEATURE_CPUFREQ_BOUNCING) += oplus/cpufreq_bouncing/
-#endif
-
-#ifdef OPLUS_FEATURE_TPD
-obj-$(CONFIG_OPLUS_FEATURE_TPD) += oplus/tpd/
-#endif
-
-#Add for NandSwap
-obj-$(CONFIG_NANDSWAP)		+= oplus/oplus_nandswap/
 

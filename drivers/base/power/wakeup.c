@@ -19,10 +19,6 @@
 #include <linux/irqdesc.h>
 #include <linux/wakeup_reason.h>
 #include <trace/events/power.h>
-#ifdef OPLUS_FEATURE_LOGKIT
-#include <linux/rtc.h>
-#include <soc/oplus/system/oplus_sync_time.h>
-#endif
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/irqdesc.h>
@@ -1243,20 +1239,12 @@ static const struct file_operations wakeup_sources_stats_fops = {
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = seq_release_private,
-#ifdef OPLUS_FEATURE_LOGKIT
-	.write          = watchdog_write,
-#endif
 };
 
 static int __init wakeup_sources_debugfs_init(void)
 {
-	#ifndef OPLUS_FEATURE_LOGKIT
 	debugfs_create_file("wakeup_sources", S_IRUGO, NULL, NULL,
 			    &wakeup_sources_stats_fops);
-	#else
-	debugfs_create_file("wakeup_sources",S_IRUGO| S_IWUGO, NULL, NULL,
-				&wakeup_sources_stats_fops);
-	#endif
 	return 0;
 }
 

@@ -56,9 +56,6 @@
 #include <asm/unistd.h>
 #include <asm/siginfo.h>
 #include <asm/cacheflush.h>
-#if defined(OPLUS_FEATURE_HANS_FREEZE) && defined(CONFIG_OPLUS_FEATURE_HANS)
-#include <linux/hans.h>
-#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 
 #ifdef CONFIG_QGKI
 #include <soc/oplus/system/oppo_process.h>
@@ -1303,9 +1300,6 @@ int do_send_sig_info(int sig, struct kernel_siginfo *info, struct task_struct *p
 	unsigned long flags;
 	int ret = -ESRCH;
 
-#if defined(OPLUS_FEATURE_HANS_FREEZE) && defined(CONFIG_OPLUS_FEATURE_HANS)
-	hans_check_signal(p, sig);
-#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 
 	if (lock_task_sighand(p, &flags)) {
 		ret = send_signal(sig, info, p, type);
